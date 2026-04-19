@@ -46,11 +46,11 @@ export default function NotesClient() {
         <header className={css.toolbar}>
           <SearchBox onChange={handleSearch} />
 
-          {data?.totalPages > 1 && (
+          {data?.totalPages && data.totalPages > 1 && (
             <Pagination
               totalPages={data.totalPages}
               currentPage={page}
-              onPageChange={setPage}
+              onPageChange={(p) => setPage(p)}
             />
           )}
 
