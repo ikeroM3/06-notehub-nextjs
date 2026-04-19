@@ -53,3 +53,12 @@ export const deleteNote = async (id: string) => {
   });
   return response.data;
 };
+export const fetchNoteById = async (id: string): Promise<Note> => {
+  const response = await axios.get<Note>(`/notes/${id}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+    },
+  });
+  return response.data;
+};

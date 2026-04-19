@@ -1,30 +1,84 @@
 "use client";
 
+import { useState } from "react";
+import { fetchNotes } from "@/lib/api";
+import { useDebouncedCallback } from "use-debounce";
 import {
-  dehydrate,
-  HydrationBoundary,
-  QueryClient,
+  useQuery,
+  useQueryClient,
+  keepPreviousData,
 } from "@tanstack/react-query";
 
-import NotesClient from "./Notes.client";
-import { fetchNotes } from "@/lib/api";
+import NoteList from "@/components/NoteList/NoteList";
+import Modal from "@/components/Modal/Modal";
+import NoteForm from "@/components/NoteForm/NoteForm";
+import Pagination from "@/components/Pagination/Pagination";
+import SearchBox from "@/components/SearchBox/SearchBox";
+import css from "./App.module.css";
 
-export default async function NotesPage() {
-  const queryClient = new QueryClient();
+export default function NotesClient() {
+  const queryClient = useQueryClient();
 
-  await queryClient.prefetchQuery({
-    queryKey: ["notes", 1, ""],
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["notes", page, search],
     queryFn: () =>
       fetchNotes({
-        page: 1,
-        searchText: "",
+        page,
+        searchText: search,
         perPage: 12,
       }),
+    placeholderData: keepPreviousData,
+    staleTime: 60000,
   });
 
+  const handleSearch = useDebouncedCallback((value: string) => {
+    setSearch(value);
+    setPage(1);
+  }, 300);
+
   return (
-    <HydrationBoundary state={dehydrate(queryClient)}>
-      <NotesClient />
-    </HydrationBoundary>
+    <>
+      <div className={css.app}>
+        <header className={css.toolbar}>
+          <SearchBox onChange={handleSearch} />
+
+          {data?.totalPages > 1 && (
+            <Pagination
+              totalPages={data.totalPages}
+              currentPage={page}
+              onPageChange={setPage}
+            />
+          )}
+
+          <button onClick={() => setIsModalOpen(true)} className={css.button}>
+            Create note +
+          </button>
+        </header>
+
+        {isLoading && <p>Loading...</p>}
+        {isError && <p>Error...</p>}
+
+        {data?.notes?.length ? (
+          <NoteList notes={data.notes} />
+        ) : (
+          !isLoading && <p>No notes found.</p>
+        )}
+      </div>
+
+      {isModalOpen && (
+        <Modal onClose={() => setIsModalOpen(false)}>
+          <NoteForm
+            onClose={() => {
+              setIsModalOpen(false);
+              queryClient.invalidateQueries({ queryKey: ["notes"] });
+            }}
+          />
+        </Modal>
+      )}
+    </>
   );
 }
